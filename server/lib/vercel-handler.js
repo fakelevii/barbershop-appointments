@@ -1,4 +1,4 @@
-const { createApp } = require('../app');
+const { createApp } = require('../app-factory');
 const { connectDatabase } = require('./database');
 const { isIP } = require('node:net');
 

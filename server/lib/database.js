@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
-const models = ['User', 'Service', 'Barber', 'Schedule', 'Appointment'].map(name => require('../models/' + name));
+// Literal paths let deployment compilers include and rewrite every model import.
+const models = [
+  require('../models/User'),
+  require('../models/Service'),
+  require('../models/Barber'),
+  require('../models/Schedule'),
+  require('../models/Appointment')
+];
 let pending;
 let initialized = false;
 
