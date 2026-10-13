@@ -8,10 +8,13 @@ async function connectDatabase() {
   if (mongoose.connection.readyState === 1 && initialized) return mongoose;
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required');
   pending = (async () => {
+    let stage = 'DATABASE_CONNECT';
+    try {
     await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000, maxPoolSize: 10,
       autoCreate: false, autoIndex: false
     });
+    stage = 'DATABASE_SETUP';
     // Unlike Model.init(), these idempotent operations do not cache a failed promise.
     await Promise.all(models.map(async model => {
       await model.createCollection();
@@ -19,6 +22,10 @@ async function connectDatabase() {
     }));
     initialized = true;
     return mongoose;
+    } catch (error) {
+      error.startupStage = stage;
+      throw error;
+    }
   })();
   try { return await pending; }
   finally { pending = undefined; }

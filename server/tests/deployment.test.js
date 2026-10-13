@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 
 test('serverless entry fails safely without configuration and recovers for later requests', async t => {
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args.join(' ')));
   let createHandler;
   try { ({ createHandler } = require('../lib/vercel-handler')); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }
   assert.equal(typeof createHandler, 'function');
@@ -24,11 +26,14 @@ test('serverless entry fails safely without configuration and recovers for later
   process.env.NODE_ENV = 'development';
   unavailable = false;
   assert.equal((await fetch(base + '/api/health')).status, 503, 'Never deploy with insecure development cookies');
+  assert.ok(logs.at(-1).includes('NODE_ENV'));
   process.env.NODE_ENV = 'production';
   unavailable = true;
   const failed = await fetch(base + '/api/health');
   assert.equal(failed.status, 503);
   assert.ok(!(await failed.text()).includes('secret'));
+  assert.ok(logs.at(-1).includes('DATABASE'));
+  assert.ok(!logs.join('').includes('mongodb://secret'));
   unavailable = false;
   const healthy = await fetch(base + '/api/health');
   assert.equal(healthy.status, 200);
