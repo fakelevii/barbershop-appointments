@@ -1,4 +1,4 @@
-const { createApp } = require('../app');
+const { createApp } = require('../app-factory');
 const { connectDatabase } = require('./database');
 const { isIP } = require('node:net');
 
@@ -31,7 +31,7 @@ function createHandler({ connect = connectDatabase } = {}) {
         : error?.name === 'MongooseServerSelectionError' ? 'DATABASE_UNREACHABLE'
         : ['MongoParseError', 'MongoInvalidArgumentError'].includes(error?.name) ? 'INVALID_DATABASE_CONFIGURATION'
         : 'STARTUP_CHECK_FAILED';
-      console.error('[startup]', JSON.stringify({ stage: error?.startupStage === 'DATABASE_CONNECT' || error?.startupStage === 'DATABASE_SETUP' ? error.startupStage : stage, category }));
+      console.error('[startup]', JSON.stringify({ stage: error?.startupStage === 'DATABASE_CONNECT' || error?.startupStage === 'DATABASE_SETUP' ? error.startupStage : stage, category, mongodbUriConfigured: Boolean(process.env.MONGODB_URI) }));
       res.statusCode = 503;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ message: 'API unavailable. Check the deployment environment and database access.' }));

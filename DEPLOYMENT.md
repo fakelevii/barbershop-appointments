@@ -46,7 +46,7 @@ Create the backend first. Reserve the frontend project/name as well so you can c
 | Configuration | `server/vercel.json` | `client/vercel.mjs` |
 | Production Branch | `main` | `main` |
 
-The backend deliberately uses an explicit Node.js function at `api/handler.js` to run the existing Express app. Do not select the Express preset or replace the app factory. `node server.js` remains the local startup command; Vercel does not run a permanent local server.
+For this two-project setup, use the Other preset and the explicit Node.js function at `api/handler.js`. If an Express preset or the root services configuration selects `app.js` instead, it exports an Express app using the same database-aware handler. The `createApp` factory lives in `app-factory.js` to avoid circular imports and remains available through `app.js` for local startup and tests. `node server.js` remains the local startup command; Vercel does not run a permanent local server.
 
 ### 3. Set backend environment variables
 
