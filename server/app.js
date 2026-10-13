@@ -50,4 +50,8 @@ function createApp({jwtSecret=process.env.JWT_SECRET,clientOrigin=process.env.CL
  });
  return app;
 }
-module.exports={createApp};
+// Vercel's Express preset can select app.js directly as its entry point.
+// Load the shared handler on the first request so its import of createApp
+// happens after this module has finished exporting the factory.
+module.exports=(req,res)=>require('./api/handler')(req,res);
+module.exports.createApp=createApp;
