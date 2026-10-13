@@ -46,23 +46,14 @@ async function withBarberLock(barberId, action) {
     return result;
   } finally { await session.endSession(); }
 }
-async function book({customer,barber,service,date,time,appointmentId}) {
+async function book({customer,barber,service,date,time}) {
   return withBarberLock(barber,async(session)=>{
-    let existing;
-    if(appointmentId) {
-      existing = await Appointment.findOne({_id:appointmentId,customer,barber}).session(session);
-      if(!existing) fail(404,'Appointment not found');
-      if(existing.status!=='confirmed' || existing.startAt<=new Date()) fail(409,'Only upcoming confirmed appointments can be rescheduled');
-    }
-    if(!appointmentId) {
-      const lockedService=await Service.findOneAndUpdate({_id:service,active:true},{$inc:{bookingRevision:1}},{session,returnDocument:'after'});
-      if(!lockedService) fail(400,'Service is no longer available');
-    }
-    const available = await availability(barber,service,date,session,appointmentId);
+    const lockedService=await Service.findOneAndUpdate({_id:service,active:true},{$inc:{bookingRevision:1}},{session,returnDocument:'after'});
+    if(!lockedService) fail(400,'Service is no longer available');
+    const available = await availability(barber,service,date,session);
     if(!available.times.includes(time)) fail(409,'That time is no longer available. Choose another time.');
     const startAt = bookingInstant(date,time);
     const data = { customer,barber,service,serviceName:available.service.name,durationMinutes:available.service.durationMinutes,startAt,endAt:new Date(startAt.getTime()+available.service.durationMinutes*60000),status:'confirmed' };
-    if(existing) { Object.assign(existing,data); await existing.save({session}); return existing; }
     const [created] = await Appointment.create([data],{session});
     return created;
   });

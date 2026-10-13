@@ -1,7 +1,8 @@
 const express=require('express');
 const Appointment=require('../models/Appointment');
 const Barber=require('../models/Barber');
-const { book,withBarberLock,localDate }=require('../domain/booking');
+const { book,withBarberLock }=require('../domain/booking');
+const { requestReschedule,decideReschedule }=require('../domain/rescheduling');
 const { fail,id,pagination,literalSearch }=require('../lib/http');
 function appointmentRoutes(auth) {
  const router=express.Router();
@@ -33,7 +34,12 @@ function appointmentRoutes(auth) {
  router.patch('/:id/reschedule',auth.role('customer'),async(req,res)=>{
   const existing=await Appointment.findOne({_id:id(req.params.id),customer:req.user._id});
   if(!existing) fail(404,'Appointment not found');
-  res.json(await book({customer:req.user._id,barber:existing.barber,service:existing.service,date:req.body.date,time:req.body.time,appointmentId:existing._id}));
+  res.json(await requestReschedule(existing,req.body.date,req.body.time));
+ });
+ router.patch('/:id/reschedule/:requestId',async(req,res)=>{
+  const existing=await Appointment.findById(id(req.params.id));
+  if(!existing) fail(404,'Appointment not found');
+  res.json(await decideReschedule(existing,req.user,id(req.params.requestId),req.body.action));
  });
  router.patch('/:id/status',async(req,res)=>{
   const existing=await Appointment.findById(id(req.params.id));
@@ -51,6 +57,10 @@ function appointmentRoutes(auth) {
     if(next==='completed' && appointment.endAt>new Date()) fail(409,'Appointment has not ended yet');
     if(next==='no-show' && appointment.startAt>new Date()) fail(409,'Appointment has not started yet');
     appointment.status=next;
+    if(appointment.rescheduleRequest?.status==='pending') {
+      appointment.rescheduleRequest.status='cancelled';
+      appointment.rescheduleRequest.resolvedAt=new Date();
+    }
     await appointment.save({session});
     return appointment;
   });

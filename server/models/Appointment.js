@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
+const rescheduleSchema = new mongoose.Schema({
+  startAt: { type: Date, required: true },
+  endAt: { type: Date, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'declined', 'withdrawn', 'cancelled'], required: true },
+  requestedAt: { type: Date, default: Date.now },
+  resolvedAt: Date
+});
 const schema = new mongoose.Schema({
+  rescheduleRequest: { type: rescheduleSchema, default: undefined },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   barber: { type: mongoose.Schema.Types.ObjectId, ref: 'Barber', required: true },
   service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },

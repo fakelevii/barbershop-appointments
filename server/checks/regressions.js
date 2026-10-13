@@ -4,7 +4,7 @@ const {createApp}=require('../app');
 const User=require('../models/User'),Barber=require('../models/Barber'),Service=require('../models/Service'),Schedule=require('../models/Schedule'),Appointment=require('../models/Appointment');
 const {issueToken}=require('../auth/security');
 test('review regression checks',async(t)=>{
- const dbName='barbershop_test_'+Date.now();
+ const dbName='barbershop_test_'+Date.now()+process.pid;
  await mongoose.connect(process.env.MONGODB_URI,{dbName,serverSelectionTimeoutMS:5000});
  t.after(async()=>{assert.equal(mongoose.connection.name,dbName);assert.match(dbName,/^barbershop_test_\d+$/);await mongoose.connection.dropDatabase();await mongoose.disconnect();});
  await Promise.all([User,Barber,Service,Schedule,Appointment].map(m=>m.init()));
@@ -23,7 +23,7 @@ test('review regression checks',async(t)=>{
   const service=await Service.create({name:'Haircut '+index,durationMinutes:30});
   const barberUser=await User.create({name:'Barber '+index,email:'barber'+index+'@example.com',passwordHash:'test-only',role:'barber'});
   const barber=await Barber.create({user:barberUser._id,services:[service._id]});
-  return {service,barber,payload:{barber:String(barber._id),service:String(service._id),date,time:'09:00'}};
+  return {service,barber,staffCookie:'session='+issueToken(barberUser,secret),payload:{barber:String(barber._id),service:String(service._id),date,time:'09:00'}};
  }
  await t.test('reschedule availability excludes own reservation and checks ownership',async()=>{
   const f=await fixture(),booking=await call('/appointments','POST',f.payload);
@@ -38,7 +38,9 @@ test('review regression checks',async(t)=>{
   assert.equal(booking.status,201);
   await call('/admin/services/'+f.service._id,'PUT',{name:'Long haircut',durationMinutes:90},adminCookie);
   const result=await call('/appointments/'+booking.data._id+'/reschedule','PATCH',{date,time:'10:30'});
-  assert.equal(result.status,200);assert.equal(result.data.durationMinutes,30);assert.equal(result.data.serviceName,f.service.name);
+  assert.equal(result.status,200);
+  const approved=await call('/appointments/'+booking.data._id+'/reschedule/'+result.data.rescheduleRequest._id,'PATCH',{action:'approve'},f.staffCookie);
+  assert.equal(approved.status,200);assert.equal(approved.data.durationMinutes,30);assert.equal(result.data.durationMinutes,30);assert.equal(result.data.serviceName,f.service.name);
  });
  await t.test('existing appointment may reschedule after service deactivation and unassignment',async()=>{
   const f=await fixture(),booking=await call('/appointments','POST',f.payload);
@@ -46,6 +48,8 @@ test('review regression checks',async(t)=>{
   await call('/admin/barbers/'+f.barber._id+'/services','PUT',{services:[]},adminCookie);
   const result=await call('/appointments/'+booking.data._id+'/reschedule','PATCH',{date,time:'10:00'});
   assert.equal(result.status,200);
+  const approved=await call('/appointments/'+booking.data._id+'/reschedule/'+result.data.rescheduleRequest._id,'PATCH',{action:'approve'},f.staffCookie);
+  assert.equal(approved.status,200);assert.equal(approved.data.durationMinutes,30);
   const detail=await call('/appointments/'+booking.data._id);assert.equal(detail.status,200);assert.equal(detail.data.durationMinutes,30);
  });
  await t.test('barber cannot expand shop hours through API',async()=>{

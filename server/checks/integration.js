@@ -10,7 +10,7 @@ const Schedule=require('../models/Schedule');
 const Appointment=require('../models/Appointment');
 const {issueToken}=require('../auth/security');
 test('real MongoDB booking, concurrency, access and schedule flow',async(t)=>{
- const dbName='barbershop_test_'+Date.now();
+ const dbName='barbershop_test_'+Date.now()+process.pid;
  assert.match(dbName,/^barbershop_test_\d+$/);
  await mongoose.connect(process.env.MONGODB_URI,{dbName,serverSelectionTimeoutMS:5000});
  t.after(async()=>{ if(mongoose.connection.name!==dbName || !/^barbershop_test_\d+$/.test(dbName)) throw new Error('Test cleanup target mismatch'); await mongoose.connection.dropDatabase();await mongoose.disconnect(); });
@@ -52,6 +52,7 @@ test('real MongoDB booking, concurrency, access and schedule flow',async(t)=>{
  assert.equal((await Appointment.findById(booked._id)).startAt.toISOString(),date+'T01:00:00.000Z');
  const moved=await call('/appointments/'+booked._id+'/reschedule','PATCH',{date,time:'10:00'},winnerCookie);
  assert.equal(moved.status,200);
+ assert.equal((await call('/appointments/'+booked._id+'/reschedule/'+moved.data.rescheduleRequest._id,'PATCH',{action:'approve'},barberCookie)).status,200);
  assert.equal((await call('/appointments','POST',{...payload,time:'09:00'},loserCookie)).status,201);
  assert.equal((await call('/appointments/'+booked._id+'/status','PATCH',{status:'cancelled'},winnerCookie)).status,200);
  const coloring=await call('/appointments','POST',{...payload,service:String(color._id),time:'10:00'},winnerCookie);

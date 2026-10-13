@@ -9,7 +9,7 @@
     "dev": "node --watch server.js",
     "check:db": "node scripts/check-db.js",
     "seed": "node scripts/seed.js",
-    "test:integration": "node --test checks/integration.js checks/regressions.js"
+    "test:integration": "node --test checks/integration.js checks/regressions.js checks/rescheduling.js checks/serverless.js"
   },
   "keywords": [],
   "author": "",
@@ -23,5 +23,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.7.0",
     "mongoose": "^9.11.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

@@ -5,7 +5,7 @@ const {authTools}=require('./auth/routes');
 const {appointmentRoutes}=require('./routes/appointments');
 const {catalogRoutes}=require('./routes/catalog');
 const {string}=require('./lib/http');
-function createApp({jwtSecret=process.env.JWT_SECRET,clientOrigin=process.env.CLIENT_ORIGIN || 'http://localhost:5173',production=process.env.NODE_ENV==='production'}={}) {
+function createApp({jwtSecret=process.env.JWT_SECRET,clientOrigin=process.env.CLIENT_ORIGIN || 'http://localhost:5173',production=process.env.NODE_ENV==='production',clientIp=req=>req.ip}={}) {
  const app=express();
  app.disable('x-powered-by');
  const allowedOrigins=new Set([clientOrigin]);
@@ -26,7 +26,7 @@ function createApp({jwtSecret=process.env.JWT_SECRET,clientOrigin=process.env.CL
  app.use(express.json({limit:'16kb'}));
  const attempts=new Map();
  app.use('/api/auth',(req,res,next)=>{
-  const key=req.ip,now=Date.now();
+  const key=clientIp(req),now=Date.now();
   const entry=attempts.get(key);
   if(!entry || entry.until<=now) attempts.set(key,{count:1,until:now+60000});
   else if(++entry.count>20) return res.status(429).json({message:'Too many attempts. Try again in a minute.'});

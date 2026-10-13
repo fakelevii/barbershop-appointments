@@ -60,13 +60,13 @@ describe('customer and barber flows',()=>{
   expect(await screen.findByRole('alert')).toBeTruthy();
   expect(screen.queryByRole('heading',{name:'Appointment history'})).toBeNull();
  });
- it('reschedules a retired service using the booked snapshot',async()=>{
+ it('requests a reschedule for a retired service using the booked snapshot',async()=>{
   api.patch.mockResolvedValue({data:{status:'confirmed'}});
   const user=userEvent.setup();show(<Booking/>,'/book?appointment=booking&barber=john&service=retired');
   expect(await screen.findByRole('option',{name:'Original haircut · 30 minutes'})).toBeTruthy();
   await user.click(await screen.findByRole('button',{name:'09:15'}));
   await user.click(screen.getByRole('button',{name:'Review appointment'}));
-  await user.click(screen.getByRole('button',{name:'Confirm new time'}));
+  await user.click(screen.getByRole('button',{name:'Request reschedule'}));
   await screen.findByRole('heading',{name:'Appointment history'});
   expect(api.patch).toHaveBeenCalledWith('/appointments/booking/reschedule',{date:'2030-01-07',time:'09:15'});
  });
